@@ -298,7 +298,7 @@ a{color:#21477e}a:hover{color:#061c3c}
 </div>
 <div style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 32px;">
 <p class="serif" style="margin: 0; font-style: italic; font-size: clamp(28px, 3vw, 38px); line-height: 1.2; color: #fdecd8;">Il ne reste qu'à nous l'envoyer.</p>
-<p style="margin: 0; font-size: 16px; font-weight: 300; line-height: 1.75; color: #fdecd8;">Ce sommaire servira de base à la rédaction et au devis. Ajoutez une remarque si besoin, copiez votre sélection, puis collez-la dans un e-mail ou un message.</p>
+<p style="margin: 0; font-size: 16px; font-weight: 300; line-height: 1.75; color: #fdecd8;">Ce sommaire servira de base à la rédaction et au devis. Ajoutez une remarque si besoin, puis envoyez-nous votre sélection directement sur WhatsApp : le message est déjà rédigé.</p>
 <dl style="margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 24px 0; border-top: 1px solid rgba(217,166,85,.4); border-bottom: 1px solid rgba(217,166,85,.4);">
 <div style="display: flex; flex-direction: column; gap: 8px;"><dt style="font-size: 10px; font-weight: 600; letter-spacing: .24em; color: #f3d79a;">VOS CHAPITRES</dt><dd class="tan" style="margin: 0; font-size: 48px; line-height: 1; color: #fdecd8;">07</dd></div>
 <div style="display: flex; flex-direction: column; gap: 8px;"><dt style="font-size: 10px; font-weight: 600; letter-spacing: .24em; color: #f3d79a;">AJOUTS</dt><dd class="tan" style="margin: 0; font-size: 48px; line-height: 1; color: #fdecd8;">{{nbAddedPad}}</dd></div>
@@ -310,15 +310,9 @@ a{color:#21477e}a:hover{color:#061c3c}
 <textarea id="remarque" class="note" placeholder="Par exemple : une page sur le jardin, les heures de passage du jardinier…" value="{{note}}" onChange="{{onNote}}"></textarea>
 </div>
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px;">
-<button type="button" class="btn gold" onClick="{{copy}}">Copier ma sélection</button>
+<button type="button" class="btn gold" onClick="{{sendWhatsApp}}">Envoyer sur WhatsApp</button>
 <p role="status" class="serif" style="margin: 0; font-style: italic; font-size: 18px; color: #f3d79a;">{{copyMsg}}</p>
 </div>
-<sc-if value="{{showText}}" hint-placeholder-val="{{false}}">
-<div style="display: flex; flex-direction: column; gap: 10px;">
-<label for="recap" style="font-size: 12px; letter-spacing: .24em; text-transform: uppercase; color: #f3d79a;">Votre sélection, à copier</label>
-<textarea id="recap" class="note" readonly="readonly" style="min-height: 280px;" value="{{summary}}"></textarea>
-</div>
-</sc-if>
 </div>
 </div>
 </div>
@@ -403,6 +397,10 @@ var KJ_LANGS = [ { id: 'fr', label: 'Français · toujours', short: 'Français',
 
 var KJ_KEY = 'kazajovea-livret-villa-v2';
 
+// Numéro WhatsApp de destination, format international sans + ni espaces (ex. 33612345678).
+// Laissé vide, WhatsApp demande à l'utilisateur de choisir le destinataire.
+var KJ_WA = '596696291979';
+
 function kjPad(n) { return n < 10 ? '0' + n : String(n); }
 
 class Component extends DCLogic {
@@ -410,7 +408,7 @@ class Component extends DCLogic {
     super(props);
     var sel = {};
     KJ_TIERS.forEach(function (t) { t.items.forEach(function (i) { sel[i.id] = t.id === 'ind'; }); });
-    this.state = { sel: sel, support: 'deux', langs: { fr: true, en: true }, note: '', copyMsg: '', showText: false };
+    this.state = { sel: sel, support: 'deux', langs: { fr: true, en: true }, note: '', copyMsg: '' };
   }
   componentDidMount() {
     try {
@@ -461,14 +459,16 @@ class Component extends DCLogic {
       client: client, pictos: KJ_PICTOS, tiers: tiers, toc: toc, supports: supports, langs: langs,
       nbReco: nbReco, nbAddedPad: kjPad(nbAdded), nbChapters: toc.length, nbLangs: langsOn.length,
       supportLabel: supportLabel, langsLabel: langsOn.join(', '),
-      note: s.note, summary: summary, copyMsg: s.copyMsg, showText: s.showText,
+      note: s.note, summary: summary, copyMsg: s.copyMsg,
       onNote: function (e) { self.save({ note: e.target.value }); },
       selectAll: function () { var m = {}; KJ_TIERS.forEach(function (t) { t.items.forEach(function (i) { m[i.id] = true; }); }); self.save({ sel: m }); },
       selectNone: function () { var m = {}; KJ_TIERS.forEach(function (t) { t.items.forEach(function (i) { m[i.id] = false; }); }); self.save({ sel: m }); },
-      copy: function () {
-        var done = function () { self.setState({ copyMsg: 'Copié. Il ne reste qu’à le coller.', showText: true }); };
-        var fail = function () { self.setState({ copyMsg: 'Sélectionnez le texte ci-dessous pour le copier.', showText: true }); };
-        try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(summary).then(done, fail); } else { fail(); } } catch (e) { fail(); }
+      sendWhatsApp: function () {
+        var url = 'https://wa.me/' + KJ_WA + '?text=' + encodeURIComponent(summary);
+        var w = null;
+        try { w = window.open(url, '_blank'); if (w) w.opener = null; } catch (e) {}
+        if (!w) window.location.href = url;
+        self.setState({ copyMsg: 'WhatsApp s’ouvre avec votre sélection : il ne reste qu’à appuyer sur Envoyer.' });
       }
     };
   }
